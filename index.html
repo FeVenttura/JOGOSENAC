@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema SENAC</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="telaLogin">
+        <h1>SENAC Reflexo Rápido</h1>
+        <form id="formLogin" novalidate>
+            <label for="nome">Nome Completo (Obrigatório para Jogadores):</label>
+            <input type="text" id="nome" placeholder="Digite seu nome aqui...">
+            
+            <label for="email">E-mail (Obrigatório para Jogadores):</label>
+            <input type="email" id="email" required placeholder="seuemail@exemplo.com">
+            
+            <label for="celular">Celular (Obrigatório para Jogadores):</label>
+            <input type="tel" id="celular" required placeholder="(XX) XXXXX-XXXX">
+
+            <label for="senha">Senha:</label>
+            <input type="password" id="senha" placeholder="Apenas para ADM">
+
+            <button type="submit">Entrar</button>
+        </form>
+    </div>
+
+    <div id="sistemaContainer" class="escondido">
+        
+        <nav id="menuLateral">
+            <div class="menu-header">
+                <button id="toggleMenuBtn">☰</button>
+                <h2><img src="img/senac-logo.png" alt="logo senac"></h2>
+            </div>
+            <ul>
+                <li><a href="#" data-target="jogar" class="active">Jogar</a></li>
+                <li><a href="#" data-target="dashboard">Dashboard</a></li>
+                <li id="menu-item-usuarios"><a href="#" data-target="usuarios">Usuários</a></li>
+            </ul>
+            <div class="menu-footer">
+                <div class="theme-switch-wrapper">
+                    <span>Modo Noturno</span>
+                    <label class="theme-switch" for="checkbox">
+                        <input type="checkbox" id="checkbox" />
+                        <div class="slider round"></div>
+                    </label>
+                </div>
+                <button id="botaoLogout">Logout</button>
+            </div>
+        </nav>
+
+        <main id="conteudoPrincipal">
+            
+            <section id="dashboard" class="secao-conteudo escondido">
+                <h1>Dashboard de Estatísticas</h1>
+                <div class="indicadores-container">
+                     <div class="cartao-indicador">
+                        <h3>Total de Usuários</h3>
+                        <p id="totalUsuarios" class="numero-indicador">0</p>
+                        <p class="descricao-indicador">Usuários cadastrados no sistema</p>
+                    </div>
+                    <div class="cartao-indicador">
+                        <h3>Média de Pontuação</h3>
+                        <p id="mediaPontuacao" class="numero-indicador">0</p>
+                        <p class="descricao-indicador">Média de pontuação máxima dos jogadores</p>
+                    </div>
+                    <div class="cartao-indicador">
+                        <h3>Pontuação Máxima Global</h3>
+                        <p id="pontuacaoMaximaGlobal" class="numero-indicador">0</p>
+                        <p class="descricao-indicador">Maior pontuação registrada no jogo</p>
+                    </div>
+                    <div class="cartao-indicador">
+                        <h3>Nível Médio</h3>
+                        <p id="nivelMedio" class="numero-indicador">0</p>
+                        <p class="descricao-indicador">Média de nível alcançado pelos jogadores</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="jogar" class="secao-conteudo">
+                <div id="containerJogo">
+                    <canvas id="telaJogo"></canvas>
+                    <div id="fimDeJogoContainer" class="escondido">
+                        <h2 id="fimDeJogoTitulo"></h2>
+                        <p id="fimDeJogoMensagem"></p>
+                        <button id="botaoReiniciar">Jogar Novamente</button>
+                    </div>
+                    <button id="botaoPausar" class="escondido">❚❚</button>
+                </div>
+            </section>
+
+            <section id="usuarios" class="secao-conteudo escondido">
+                <h1>Gerenciamento de Usuários</h1>
+                
+                <div class="ferramentas-tabela">
+                    <input type="text" id="filtroUsuarios" placeholder="Pesquisar por nome...">
+                </div>
+                
+                <div class="tabela-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome Completo</th>
+                                <th>E-mail</th>
+                                <th>Celular</th>
+                                <th>Data de Cadastro</th>
+                                <th>Pontuação Máxima</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaUsuarios"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer id="page-footer">
+        Criado por Felipe Felentil, Fernando Ventura e Lucas Medeira.<br>
+        Todos os direitos reservados.
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
