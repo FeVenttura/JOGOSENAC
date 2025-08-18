@@ -252,14 +252,13 @@ canvas {
     box-shadow: 5px 0 15px rgba(0,0,0,0.2);
     z-index: 5;
     flex-shrink: 0;
-    transition: width 0.3s ease, padding 0.3s ease, background-color 0.3s ease;
+    transition: width 0.3s ease, padding 0.3s ease, background-color 0.3s ease, transform 0.3s ease-in-out;
 }
 
-/* ALTERADO: Centralização da logo e ajuste de espaçamento */
 #menuLateral .menu-header {
     display: flex;
     align-items: center;
-    justify-content: flex-start; /* Mantém o botão à esquerda */
+    justify-content: center; /* Centraliza a logo */
     margin-bottom: 40px;
     overflow: hidden;
 }
@@ -267,18 +266,16 @@ canvas {
 #menuLateral .menu-header h2 {
     margin: 0;
     padding: 0;
-    height: 80px;
-    width: 100%; /* Faz o container da logo ocupar o espaço restante */
-    line-height: 0;
-    text-align: center; /* Centraliza a imagem dentro do container */
+    height: 45px; /* Altura do logo */
+    width: auto;
+    line-height: 0; 
 }
 
 #menuLateral .menu-header h2 img {
     height: 100%;
     width: auto;
-    display: inline-block; /* Permite a centralização com text-align */
+    display: block; 
 }
-
 
 #menuLateral ul {
     list-style: none;
@@ -342,28 +339,25 @@ canvas {
     flex-direction: column;
 }
 
-/* --- ESTILOS DO MENU COLAPSÁVEL --- */
+/* --- ESTILOS DO MENU COLAPSÁVEL (DESKTOP) --- */
 #toggleMenuBtn {
     background: none;
     border: none;
-    color: var(--cor-texto);
-    font-size: 24px;
+    color: var(--cor-texto-principal);
+    font-size: 28px;
     cursor: pointer;
-    padding: 0 15px 0 0;
-    transition: transform 0.3s ease;
-}
-
-#toggleMenuBtn.ativo {
-    transform: rotate(90deg);
+    padding: 15px;
+    position: absolute;
+    top: 5px;
+    left: 10px;
+    z-index: 1002;
+    display: none;
 }
 
 body.menu-fechado #menuLateral {
-    width: 60px;
+    width: 0;
     padding: 20px 0;
-}
-
-body.menu-fechado #menuLateral .menu-header {
-    justify-content: center;
+    overflow: hidden;
 }
 
 body.menu-fechado #menuLateral .menu-header h2,
@@ -372,9 +366,6 @@ body.menu-fechado #menuLateral .menu-footer {
     display: none;
 }
 
-body.menu-fechado #toggleMenuBtn {
-    padding: 0;
-}
 
 /* --- ESTILOS DAS SEÇÕES, TABELAS E INDICADORES --- */
 #usuarios h1, #dashboard h1 {
@@ -497,18 +488,48 @@ input:checked + .slider:before {
     transform: translateX(24px);
 }
 
-
 /* --- REGRAS PARA TELAS PEQUENAS (RESPONSIVIDADE) --- */
 @media (max-width: 800px) {
-    #sistemaContainer { flex-direction: column; }
-    #menuLateral { height: auto; flex-direction: row; align-items: center; padding: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); justify-content: space-between; }
-    #menuLateral .menu-header { margin: 0; }
-    #toggleMenuBtn { display: none; }
-    #menuLateral .menu-header h2 { display: block; }
-    #menuLateral ul { display: flex; gap: 10px; margin: 0 20px; flex-grow: 0; }
-    #menuLateral ul li a { padding: 8px 12px; margin: 0; font-size: 14px; }
-    #menuLateral .menu-footer { margin-left: auto; }
-    #conteudoPrincipal { padding: 20px; }
+    #toggleMenuBtn {
+        display: block;
+    }
+
+    #sistemaContainer {
+        flex-direction: row; /* Mantém a direção para o menu deslizar */
+    }
+
+    #menuLateral {
+        position: fixed;
+        height: 100%;
+        z-index: 1001;
+        transform: translateX(-100%);
+    }
+
+    body.menu-mobile-aberto #menuLateral {
+        transform: translateX(0);
+    }
+    
+    body.menu-mobile-aberto main::after {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    }
+
+    #conteudoPrincipal {
+        padding: 20px;
+        padding-top: 70px;
+    }
+    
+    body.loggedin #page-footer {
+        left: 15px;
+        right: 15px;
+        text-align: center;
+    }
 }
 
 @media (max-width: 600px) {
@@ -520,12 +541,7 @@ input:checked + .slider:before {
 }
 
 @media (max-width: 480px) {
-    #menuLateral { flex-wrap: wrap; justify-content: center; gap: 10px; }
-    #menuLateral .menu-header { display: none; }
-    #menuLateral ul { margin: 0; gap: 5px; flex-grow: 1; justify-content: center; }
-    #menuLateral ul li a { font-size: 12px; padding: 8px 10px; }
-    #menuLateral .menu-footer { margin: 0; width: 100%; text-align: center; }
-    #botaoLogout { width: auto; padding: 8px 15px; }
+    /* No mobile, o menu já é hamburger, então não precisamos mais disso */
 }
 
 /* --- ESTILOS DO FOOTER --- */
@@ -549,7 +565,7 @@ body.loggedin #page-footer {
 }
 
 body.loggedin.menu-fechado #page-footer {
-    left: 80px;
+    left: 20px;
 }
 
 body.dark-mode #page-footer {

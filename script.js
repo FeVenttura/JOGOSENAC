@@ -204,13 +204,30 @@ botaoReiniciar.addEventListener('click', () => {
 });
 botaoPausar.addEventListener('click', alternarPausa);
 
+if (toggleMenuBtn) { 
+    toggleMenuBtn.addEventListener('click', () => {
+        const isMobile = window.innerWidth <= 800;
+        
+        if (isMobile) {
+            document.body.classList.toggle('menu-mobile-aberto');
+        } else {
+            document.body.classList.toggle('menu-fechado');
+        }
+    });
+}
+
 menuLinks.forEach(link => {
     link.addEventListener('click', (evento) => {
         evento.preventDefault();
         const targetId = link.dataset.target;
         mostrarSecao(targetId);
+
+        if (document.body.classList.contains('menu-mobile-aberto')) {
+            document.body.classList.remove('menu-mobile-aberto');
+        }
     });
 });
+
 
 function mostrarSecao(id) {
     if (id === 'usuarios' && jogadorAtual.role !== 'admin') {
@@ -263,14 +280,6 @@ function atualizarIndicadores() {
     document.getElementById('nivelMedio').textContent = nivelMedio;
 }
 
-if (toggleMenuBtn) { 
-    toggleMenuBtn.addEventListener('click', () => {
-        document.body.classList.toggle('menu-fechado');
-        toggleMenuBtn.classList.toggle('ativo');
-        setTimeout(ajustarTamanhoCanvas, 300); 
-    });
-}
-
 if (filtroUsuariosInput) { filtroUsuariosInput.addEventListener('keyup', () => {
     const termoBusca = filtroUsuariosInput.value.toLowerCase();
     for (let linha of corpoTabelaUsuarios.rows) {
@@ -300,7 +309,6 @@ window.addEventListener('keydown', (evento) => {
             alternarPausa();
         }
     }
-    // CORRIGIDO: Avançar de nível com teclado
     if (evento.key === 'Enter' || evento.code === 'Space') {
         if (estadoDoJogo === 'nivelConcluido') {
             evento.preventDefault();
@@ -313,42 +321,29 @@ window.addEventListener('keydown', (evento) => {
 
 function tratarCliqueOuToque(evento) {
     evento.preventDefault(); 
-    
-    // CORRIGIDO: Avançar de nível com toque/clique
     if (estadoDoJogo === 'nivelConcluido') {
         nivelAtual++;
         estadoDoJogo = 'jogando';
         iniciarNivel(nivelAtual);
         return;
     }
-
-    if (estadoDoJogo === 'preparado') { 
-        reiniciarJogo(); 
-        return; 
-    }
-
+    if (estadoDoJogo === 'preparado') { reiniciarJogo(); return; }
     if (estadoDoJogo !== 'jogando') return;
-
     const rect = canvas.getBoundingClientRect();
     const clientX = evento.touches ? evento.touches[0].clientX : evento.clientX;
     const clientY = evento.touches ? evento.touches[0].clientY : evento.clientY;
     const mouseX = clientX - rect.left;
     const mouseY = clientY - rect.top;
     const padding = 15; 
-    
     if (mouseX >= alvo.x - padding && mouseX <= alvo.x + alvo.largura + padding &&
         mouseY >= alvo.y - padding && mouseY <= alvo.y + alvo.altura + padding) {
-        
         somDoClique.currentTime = 0;
         somDoClique.play().catch(e => console.log("Erro ao tocar som:", e));
-        
         pontuacao += 10;
         tempoRestante += 2; 
         alvo.velocidadeY += 0.04; 
         if (alvo.velocidadeY > VELOCIDADE_MAXIMA) alvo.velocidadeY = VELOCIDADE_MAXIMA;
-        
         resetarPosicaoAlvo();
-        
         if (nivelAtual < niveis.length && pontuacao >= niveis[nivelAtual].pontuacaoParaPassar) {
             if (pontuacao < PONTUACAO_VITORIA) {
                  estadoDoJogo = 'nivelConcluido';
@@ -392,7 +387,6 @@ function gameLoop() {
         ctx.font = 'bold 30px Poppins, sans-serif';
         ctx.fillText(`Parabéns, você concluiu o Nível ${nivelAtual + 1}!`, canvas.width / 2, canvas.height / 2 - 20);
         ctx.font = '20px Poppins, sans-serif';
-        // ALTERADO: Texto de instrução atualizado
         ctx.fillText(`Pressione Enter ou Toque na Tela para o Nível ${proximoNivel}`, canvas.width / 2, canvas.height / 2 + 30);
     }
     else if (estadoDoJogo === 'pausado') {
