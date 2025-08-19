@@ -43,18 +43,26 @@ let jogadorAtual = null;
 let cronometro; 
 let tempoRestante; 
 
-const PONTUACAO_VITORIA = 3000;
-const VELOCIDADE_MAXIMA = 12;
+const VELOCIDADE_MAXIMA = 15;
+
+const CURSOS_ALVO = ['ADS', 'Administração', 'Enfermagem', 'Processos Gerenciais', 'Gastronomia', 'Estética', 'Farmácia', 'Radiologia', 'Recursos Humanos', 'Meio Ambiente', 'Secretariado', 'Logística', 'Internet das Coisas'];
+const ITEM_PERIGO = '💣';
+
 
 // ===============================================
 // PASSO 2: CONFIGURAÇÃO DOS NÍVEIS
 // ===============================================
 
+// CORRIGIDO: Apenas uma declaração de PONTUACAO_VITORIA
+const PONTUACAO_VITORIA = 2500;
+
 const niveis = [
-    { pontuacaoParaPassar: 100,  velocidadeBase: 2, tamanhoAlvo: 50, cor: '#005594', tempo: 20 },
-    { pontuacaoParaPassar: 300,  velocidadeBase: 3, tamanhoAlvo: 40, cor: '#0073b1', tempo: 25 },
-    { pontuacaoParaPassar: 700,  velocidadeBase: 4, tamanhoAlvo: 30, cor: '#f7941d', tempo: 30 },
-    { pontuacaoParaPassar: 3000, velocidadeBase: 5, tamanhoAlvo: 25, cor: '#cc0000', tempo: 35 }
+    { pontuacaoParaPassar: 100,  velocidadeBase: 3.5, cor: '#005594', tempo: 40 },
+    { pontuacaoParaPassar: 300,  velocidadeBase: 4.5, cor: '#0073b1', tempo: 35 },
+    { pontuacaoParaPassar: 600,  velocidadeBase: 5.5, cor: '#f7941d', tempo: 30 },
+    { pontuacaoParaPassar: 1000, velocidadeBase: 6.5, cor: '#d9534f', tempo: 25 },
+    { pontuacaoParaPassar: 1600, velocidadeBase: 7.5, cor: '#cc0000', tempo: 20 },
+    { pontuacaoParaPassar: 2500, velocidadeBase: 8.5, cor: '#8c0000', tempo: 20 }
 ];
 
 // ===============================================
@@ -87,9 +95,29 @@ function cadastrarOuLogarUsuario(nome, email, celular) {
 // PASSO 4: OBJETO DE JOGO E FUNÇÕES DO JOGO
 // ===============================================
 
-const alvo = { x: 50, y: 50, largura: 50, altura: 50, cor: '#005594', velocidadeY: 2 };
+const alvo = { x: 50, y: 50, largura: 100, altura: 40, cor: '#005594', velocidadeY: 3, texto: '' };
+
 function resetarPosicaoAlvo() {
     alvo.y = -alvo.altura; 
+
+    if (Math.random() < 0.25) {
+        alvo.texto = ITEM_PERIGO;
+    } else {
+        alvo.texto = CURSOS_ALVO[Math.floor(Math.random() * CURSOS_ALVO.length)];
+    }
+
+    let tamanhoFonte;
+    if (alvo.texto === ITEM_PERIGO) {
+        tamanhoFonte = 32;
+    } else {
+        tamanhoFonte = 22;
+    }
+
+    ctx.font = `bold ${tamanhoFonte}px Gotham, Poppins, sans-serif`;
+    const textMetrics = ctx.measureText(alvo.texto);
+    alvo.largura = textMetrics.width + 20;
+    alvo.altura = tamanhoFonte + 20;
+
     alvo.x = Math.random() * (canvas.width - alvo.largura);
 }
 
@@ -109,8 +137,6 @@ function iniciarNivel(indiceNivel) {
     if (indiceNivel >= niveis.length) return;
     const configNivel = niveis[indiceNivel];
     
-    alvo.largura = configNivel.tamanhoAlvo;
-    alvo.altura = configNivel.tamanhoAlvo;
     alvo.cor = configNivel.cor;
     alvo.velocidadeY = configNivel.velocidadeBase;
     
@@ -321,39 +347,56 @@ window.addEventListener('keydown', (evento) => {
 
 function tratarCliqueOuToque(evento) {
     evento.preventDefault(); 
+    
     if (estadoDoJogo === 'nivelConcluido') {
-        nivelAtual++;
-        estadoDoJogo = 'jogando';
-        iniciarNivel(nivelAtual);
-        return;
+        if (evento.type === 'touchstart') {
+            nivelAtual++;
+            estadoDoJogo = 'jogando';
+            iniciarNivel(nivelAtual);
+        }
+        return; 
     }
-    if (estadoDoJogo === 'preparado') { reiniciarJogo(); return; }
+    
+    if (estadoDoJogo === 'preparado') { 
+        reiniciarJogo(); 
+        return; 
+    }
+    
     if (estadoDoJogo !== 'jogando') return;
+
     const rect = canvas.getBoundingClientRect();
     const clientX = evento.touches ? evento.touches[0].clientX : evento.clientX;
     const clientY = evento.touches ? evento.touches[0].clientY : evento.clientY;
     const mouseX = clientX - rect.left;
     const mouseY = clientY - rect.top;
-    const padding = 15; 
-    if (mouseX >= alvo.x - padding && mouseX <= alvo.x + alvo.largura + padding &&
-        mouseY >= alvo.y - padding && mouseY <= alvo.y + alvo.altura + padding) {
+    
+    if (mouseX >= alvo.x && mouseX <= alvo.x + alvo.largura &&
+        mouseY >= alvo.y && mouseY <= alvo.y + alvo.altura) {
+        
         somDoClique.currentTime = 0;
         somDoClique.play().catch(e => console.log("Erro ao tocar som:", e));
-        pontuacao += 10;
-        tempoRestante += 2; 
-        alvo.velocidadeY += 0.04; 
-        if (alvo.velocidadeY > VELOCIDADE_MAXIMA) alvo.velocidadeY = VELOCIDADE_MAXIMA;
-        resetarPosicaoAlvo();
-        if (nivelAtual < niveis.length && pontuacao >= niveis[nivelAtual].pontuacaoParaPassar) {
-            if (pontuacao < PONTUACAO_VITORIA) {
-                 estadoDoJogo = 'nivelConcluido';
-                 clearInterval(cronometro); 
+        
+        if (alvo.texto === ITEM_PERIGO) {
+            tempoRestante -= 2;
+        } 
+        else {
+            pontuacao += 10;
+            tempoRestante += 2; 
+            alvo.velocidadeY += 0.05; 
+            if (alvo.velocidadeY > VELOCIDADE_MAXIMA) alvo.velocidadeY = VELOCIDADE_MAXIMA;
+            
+            if (nivelAtual < niveis.length && pontuacao >= niveis[nivelAtual].pontuacaoParaPassar) {
+                if (pontuacao < PONTUACAO_VITORIA) {
+                     estadoDoJogo = 'nivelConcluido';
+                     clearInterval(cronometro); 
+                }
+            }
+            if (pontuacao >= PONTUACAO_VITORIA) {
+                estadoDoJogo = 'vitoria';
+                atualizarPontuacaoJogador();
             }
         }
-        if (pontuacao >= PONTUACAO_VITORIA) {
-            estadoDoJogo = 'vitoria';
-            atualizarPontuacaoJogador();
-        }
+        resetarPosicaoAlvo();
     }
 }
 
@@ -390,23 +433,35 @@ function gameLoop() {
         ctx.fillText(`Pressione Enter ou Toque na Tela para o Nível ${proximoNivel}`, canvas.width / 2, canvas.height / 2 + 30);
     }
     else if (estadoDoJogo === 'pausado') {
-        ctx.fillStyle = alvo.cor;
-        ctx.fillRect(alvo.x, alvo.y, alvo.largura, alvo.altura);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
-        ctx.font = 'bold 50px Poppins, sans-serif';
+        ctx.font = 'bold 50px Gotham, Poppins, sans-serif';
         ctx.fillText('PAUSADO', canvas.width / 2, canvas.height / 2);
     }
     else if (estadoDoJogo === 'jogando') {
         alvo.y += alvo.velocidadeY;
         if (alvo.y > canvas.height) {
-            tempoRestante -= 2;
+            if (alvo.texto !== ITEM_PERIGO) {
+                tempoRestante -= 2;
+            }
             resetarPosicaoAlvo();
         }
-        ctx.fillStyle = alvo.cor;
-        ctx.fillRect(alvo.x, alvo.y, alvo.largura, alvo.altura);
+        
+        let tamanhoFonte;
+        if (alvo.texto === ITEM_PERIGO) {
+            tamanhoFonte = 32;
+        } else {
+            tamanhoFonte = 22;
+        }
+        ctx.font = `bold ${tamanhoFonte}px Gotham, Poppins, sans-serif`;
+        ctx.fillStyle = alvo.texto === ITEM_PERIGO ? '#FF5733' : alvo.cor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(alvo.texto, alvo.x + alvo.largura / 2, alvo.y + alvo.altura / 2);
+
+        // Barra de informações superior
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(0, 0, canvas.width, 50);
         ctx.fillStyle = '#FFFFFF';
@@ -414,16 +469,18 @@ function gameLoop() {
         ctx.shadowBlur = 4;
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 2;
-        let tamanhoFonte = canvas.width < 600 ? 14 : 20;
+        let tamanhoFonteInfo = canvas.width < 600 ? 14 : 20;
         let yPosTexto = 32;
-        ctx.font = `bold ${tamanhoFonte}px Poppins, sans-serif`;
+        ctx.font = `bold ${tamanhoFonteInfo}px Poppins, sans-serif`;
         ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic'; 
         ctx.fillText(`Pontos: ${pontuacao}`, 15, yPosTexto);
         ctx.textAlign = 'center';
         ctx.fillText(`Recorde: ${jogadorAtual?.pontuacaoMaxima || 0}`, canvas.width / 2, yPosTexto);
         ctx.textAlign = 'right';
         ctx.fillText(`Nível: ${nivelAtual + 1} | Tempo: ${Math.max(0, tempoRestante)}`, canvas.width - 15, yPosTexto);
         ctx.shadowColor = 'transparent';
+
     } else if (estadoDoJogo === 'vitoria' || estadoDoJogo === 'gameOver') {
         fimDeJogoContainer.classList.remove('escondido');
         if (estadoDoJogo === 'vitoria') {
