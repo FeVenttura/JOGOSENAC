@@ -42,8 +42,9 @@ let nivelAtual = 0;
 let jogadorAtual = null; 
 let cronometro; 
 let tempoRestante; 
+let geradorDeAlvosInterval; // NOVO: Controlador do intervalo de geração de alvos
 
-const VELOCIDADE_MAXIMA = 15;
+const VELOCIDADE_MAXIMA = 18;
 
 const CURSOS_ALVO = ['ADS', 'Administração', 'Enfermagem', 'Processos Gerenciais', 'Gastronomia', 'Estética', 'Farmácia', 'Radiologia', 'Recursos Humanos', 'Meio Ambiente', 'Secretariado', 'Logística', 'Internet das Coisas'];
 const ITEM_PERIGO = '💣';
@@ -53,20 +54,20 @@ const ITEM_PERIGO = '💣';
 // PASSO 2: CONFIGURAÇÃO DOS NÍVEIS
 // ===============================================
 
-// CORRIGIDO: Apenas uma declaração de PONTUACAO_VITORIA
 const PONTUACAO_VITORIA = 2500;
 
+// ALTERADO: Adicionado 'intervaloGeracao' para controlar o fluxo de palavras
 const niveis = [
-    { pontuacaoParaPassar: 100,  velocidadeBase: 3.5, cor: '#005594', tempo: 40 },
-    { pontuacaoParaPassar: 300,  velocidadeBase: 4.5, cor: '#0073b1', tempo: 35 },
-    { pontuacaoParaPassar: 600,  velocidadeBase: 5.5, cor: '#f7941d', tempo: 30 },
-    { pontuacaoParaPassar: 1000, velocidadeBase: 6.5, cor: '#d9534f', tempo: 25 },
-    { pontuacaoParaPassar: 1600, velocidadeBase: 7.5, cor: '#cc0000', tempo: 20 },
-    { pontuacaoParaPassar: 2500, velocidadeBase: 8.5, cor: '#8c0000', tempo: 20 }
+    { pontuacaoParaPassar: 100,  velocidadeBase: 3.5, cor: '#005594', tempo: 40, intervaloGeracao: 1200 }, // ms
+    { pontuacaoParaPassar: 300,  velocidadeBase: 4.5, cor: '#0073b1', tempo: 35, intervaloGeracao: 1000 },
+    { pontuacaoParaPassar: 600,  velocidadeBase: 5.5, cor: '#f7941d', tempo: 30, intervaloGeracao: 900 },
+    { pontuacaoParaPassar: 1000, velocidadeBase: 6.5, cor: '#d9534f', tempo: 25, intervaloGeracao: 800 },
+    { pontuacaoParaPassar: 1600, velocidadeBase: 7.5, cor: '#cc0000', tempo: 20, intervaloGeracao: 700 },
+    { pontuacaoParaPassar: 2500, velocidadeBase: 8.5, cor: '#8c0000', tempo: 20, intervaloGeracao: 600 }
 ];
 
 // ===============================================
-// PASSO 3: GERENCIAMENTO DE DADOS (LOCALSTORAGE)
+// PASSO 3: GERENCIAMENTO DE DADOS
 // ===============================================
 
 function getUsuarios() { return JSON.parse(localStorage.getItem('usuariosJogo')) || []; }
@@ -91,34 +92,70 @@ function cadastrarOuLogarUsuario(nome, email, celular) {
     if (!jogadorAtual.role) jogadorAtual.role = 'player';
 }
 
+function atualizarPontuacaoJogador() {
+    if (!jogadorAtual || jogadorAtual.role !== 'player') return;
+
+    let usuarios = getUsuarios();
+    let usuarioParaAtualizar = usuarios.find(u => u.id === jogadorAtual.id);
+
+    if (usuarioParaAtualizar) {
+        if (pontuacao > usuarioParaAtualizar.pontuacaoMaxima) {
+            usuarioParaAtualizar.pontuacaoMaxima = pontuacao;
+            jogadorAtual.pontuacaoMaxima = pontuacao;
+        }
+        usuarioParaAtualizar.nivelMaximo = Math.max(usuarioParaAtualizar.nivelMaximo, nivelAtual + 1);
+        salvarUsuarios(usuarios);
+    }
+}
+
+
 // ===============================================
 // PASSO 4: OBJETO DE JOGO E FUNÇÕES DO JOGO
 // ===============================================
 
-const alvo = { x: 50, y: 50, largura: 100, altura: 40, cor: '#005594', velocidadeY: 3, texto: '' };
+// REFEITO: Agora temos um array de alvos
+let alvos = [];
 
-function resetarPosicaoAlvo() {
-    alvo.y = -alvo.altura; 
+// REFEITO: Esta função agora CRIA um novo alvo e o adiciona ao array
+function criarNovoAlvo() {
+    if (estadoDoJogo !== 'jogando') return;
 
-    if (Math.random() < 0.25) {
-        alvo.texto = ITEM_PERIGO;
-    } else {
-        alvo.texto = CURSOS_ALVO[Math.floor(Math.random() * CURSOS_ALVO.length)];
-    }
+    const configNivel = niveis[nivelAtual];
+    let texto, tamanhoFonte;
 
-    let tamanhoFonte;
-    if (alvo.texto === ITEM_PERIGO) {
+    // Decide se é bomba ou curso
+    if (Math.random() < 0.35) {
+        texto = ITEM_PERIGO;
         tamanhoFonte = 32;
     } else {
+        texto = CURSOS_ALVO[Math.floor(Math.random() * CURSOS_ALVO.length)];
         tamanhoFonte = 22;
     }
-
+    
+    // Calcula o hitbox
     ctx.font = `bold ${tamanhoFonte}px Gotham, Poppins, sans-serif`;
-    const textMetrics = ctx.measureText(alvo.texto);
-    alvo.largura = textMetrics.width + 20;
-    alvo.altura = tamanhoFonte + 20;
+    const textMetrics = ctx.measureText(texto);
+    const largura = textMetrics.width + 20;
+    const altura = tamanhoFonte + 20;
+    const x = Math.random() * (canvas.width - largura);
+    
+    // Cria e adiciona o novo alvo ao array
+    alvos.push({
+        x: x,
+        y: -altura,
+        largura: largura,
+        altura: altura,
+        cor: configNivel.cor,
+        velocidadeY: configNivel.velocidadeBase,
+        texto: texto
+    });
+}
 
-    alvo.x = Math.random() * (canvas.width - alvo.largura);
+// NOVO: Função para controlar o intervalo de geração de alvos
+function iniciarGeradorDeAlvos() {
+    clearInterval(geradorDeAlvosInterval);
+    const intervalo = niveis[nivelAtual].intervaloGeracao;
+    geradorDeAlvosInterval = setInterval(criarNovoAlvo, intervalo);
 }
 
 function iniciarCronometro() {
@@ -126,6 +163,7 @@ function iniciarCronometro() {
     cronometro = setInterval(() => {
         tempoRestante--;
         if (tempoRestante <= 0 && estadoDoJogo === 'jogando') {
+            clearInterval(geradorDeAlvosInterval);
             clearInterval(cronometro);
             estadoDoJogo = 'gameOver';
             atualizarPontuacaoJogador();
@@ -137,15 +175,14 @@ function iniciarNivel(indiceNivel) {
     if (indiceNivel >= niveis.length) return;
     const configNivel = niveis[indiceNivel];
     
-    alvo.cor = configNivel.cor;
-    alvo.velocidadeY = configNivel.velocidadeBase;
+    // Limpa os alvos da tela anterior
+    alvos = []; 
     
-    resetarPosicaoAlvo();
-
-    if (!tempoRestante || tempoRestante <= 0) {
-        tempoRestante = configNivel.tempo;
-    }
+    // ALTERADO: O tempo agora REINICIA a cada nível
+    tempoRestante = configNivel.tempo;
+    
     iniciarCronometro();
+    iniciarGeradorDeAlvos(); // Inicia o novo fluxo de palavras
 }
 
 
@@ -162,11 +199,13 @@ function alternarPausa() {
     if (estadoDoJogo === 'jogando') {
         estadoDoJogo = 'pausado';
         clearInterval(cronometro);
+        clearInterval(geradorDeAlvosInterval); // Pausa a geração de novos alvos
         botaoPausar.textContent = '▶';
         botaoPausar.classList.add('pausado');
     } else if (estadoDoJogo === 'pausado') {
         estadoDoJogo = 'jogando';
         iniciarCronometro();
+        iniciarGeradorDeAlvos(); // Retoma a geração de novos alvos
         botaoPausar.textContent = '❚❚';
         botaoPausar.classList.remove('pausado');
     }
@@ -195,7 +234,6 @@ formLogin.addEventListener('submit', function(evento) {
     if (email === ADMIN_EMAIL) {
         if (senha === ADMIN_SENHA) {
             jogadorAtual = { nome: 'Administrador', email: ADMIN_EMAIL, role: 'admin' };
-            menuItemUsuarios.classList.remove('escondido');
             iniciarSessao();
             mostrarSecao('usuarios');
         } else {
@@ -208,22 +246,33 @@ formLogin.addEventListener('submit', function(evento) {
             return;
         }
         cadastrarOuLogarUsuario(nome, email, celular);
-        menuItemUsuarios.classList.add('escondido');
+        estadoDoJogo = 'preparado'; 
         iniciarSessao();
         mostrarSecao('jogar');
     }
 });
 
 function iniciarSessao() {
+    sessionStorage.setItem('jogadorLogado', JSON.stringify(jogadorAtual));
     telaLogin.classList.add('escondido');
     sistemaContainer.classList.remove('escondido');
     document.body.classList.add('loggedin');
+
+    configurarInterfacePorRole();
     ajustarTamanhoCanvas();
     window.addEventListener('resize', ajustarTamanhoCanvas);
-    gameLoop(); 
+    
+    if (typeof gameLoop.initialized === 'undefined') {
+        gameLoop();
+        gameLoop.initialized = true;
+    }
 }
 
-botaoLogout.addEventListener('click', () => location.reload());
+botaoLogout.addEventListener('click', () => {
+    sessionStorage.removeItem('jogadorLogado');
+    location.reload();
+});
+
 botaoReiniciar.addEventListener('click', () => {
     fimDeJogoContainer.classList.add('escondido');
     estadoDoJogo = 'preparado';
@@ -325,9 +374,29 @@ if (themeSwitch) {
     });
 }
 
+function configurarInterfacePorRole() {
+    if(jogadorAtual.role === 'admin') {
+        menuItemUsuarios.classList.remove('escondido');
+    } else {
+        menuItemUsuarios.classList.add('escondido');
+    }
+}
+
 // ===============================================
-// PASSO 6: LÓGICA DE CONTROLES (TECLADO E MOUSE)
+// PASSO 6: LÓGICA DE CONTROLES E INICIALIZAÇÃO
 // ===============================================
+
+window.addEventListener('load', () => {
+    const jogadorSalvo = sessionStorage.getItem('jogadorLogado');
+    if (jogadorSalvo) {
+        jogadorAtual = JSON.parse(jogadorSalvo);
+        estadoDoJogo = 'preparado';
+        iniciarSessao();
+        const telaInicial = jogadorAtual.role === 'admin' ? 'usuarios' : 'jogar';
+        mostrarSecao(telaInicial);
+    }
+});
+
 
 window.addEventListener('keydown', (evento) => {
     if (evento.key === 'Escape') {
@@ -345,11 +414,12 @@ window.addEventListener('keydown', (evento) => {
     }
 });
 
+// REFEITO: Agora itera sobre múltiplos alvos
 function tratarCliqueOuToque(evento) {
     evento.preventDefault(); 
     
     if (estadoDoJogo === 'nivelConcluido') {
-        if (evento.type === 'touchstart') {
+        if (evento.type === 'touchstart' || evento.type === 'click') { // Permitindo clique também para desktop
             nivelAtual++;
             estadoDoJogo = 'jogando';
             iniciarNivel(nivelAtual);
@@ -370,33 +440,36 @@ function tratarCliqueOuToque(evento) {
     const mouseX = clientX - rect.left;
     const mouseY = clientY - rect.top;
     
-    if (mouseX >= alvo.x && mouseX <= alvo.x + alvo.largura &&
-        mouseY >= alvo.y && mouseY <= alvo.y + alvo.altura) {
-        
-        somDoClique.currentTime = 0;
-        somDoClique.play().catch(e => console.log("Erro ao tocar som:", e));
-        
-        if (alvo.texto === ITEM_PERIGO) {
-            tempoRestante -= 2;
-        } 
-        else {
-            pontuacao += 10;
-            tempoRestante += 2; 
-            alvo.velocidadeY += 0.05; 
-            if (alvo.velocidadeY > VELOCIDADE_MAXIMA) alvo.velocidadeY = VELOCIDADE_MAXIMA;
+    // Itera de trás para frente para poder remover itens com segurança
+    for (let i = alvos.length - 1; i >= 0; i--) {
+        const alvo = alvos[i];
+        if (mouseX >= alvo.x && mouseX <= alvo.x + alvo.largura &&
+            mouseY >= alvo.y && mouseY <= alvo.y + alvo.altura) {
             
-            if (nivelAtual < niveis.length && pontuacao >= niveis[nivelAtual].pontuacaoParaPassar) {
-                if (pontuacao < PONTUACAO_VITORIA) {
-                     estadoDoJogo = 'nivelConcluido';
-                     clearInterval(cronometro); 
+            somDoClique.currentTime = 0;
+            somDoClique.play().catch(e => console.log("Erro ao tocar som:", e));
+            
+            if (alvo.texto === ITEM_PERIGO) {
+                tempoRestante -= 2;
+            } else {
+                pontuacao += 10;
+                tempoRestante += 2; 
+                
+                if (nivelAtual < niveis.length - 1 && pontuacao >= niveis[nivelAtual].pontuacaoParaPassar) {
+                    estadoDoJogo = 'nivelConcluido';
+                    clearInterval(cronometro);
+                    clearInterval(geradorDeAlvosInterval);
+                } else if (pontuacao >= PONTUACAO_VITORIA) {
+                    estadoDoJogo = 'vitoria';
+                    clearInterval(cronometro);
+                    clearInterval(geradorDeAlvosInterval);
+                    atualizarPontuacaoJogador();
                 }
             }
-            if (pontuacao >= PONTUACAO_VITORIA) {
-                estadoDoJogo = 'vitoria';
-                atualizarPontuacaoJogador();
-            }
+            
+            alvos.splice(i, 1); // Remove o alvo clicado
+            return; // Sai da função após o primeiro acerto para evitar múltiplos cliques
         }
-        resetarPosicaoAlvo();
     }
 }
 
@@ -430,7 +503,7 @@ function gameLoop() {
         ctx.font = 'bold 30px Poppins, sans-serif';
         ctx.fillText(`Parabéns, você concluiu o Nível ${nivelAtual + 1}!`, canvas.width / 2, canvas.height / 2 - 20);
         ctx.font = '20px Poppins, sans-serif';
-        ctx.fillText(`Pressione Enter ou Toque na Tela para o Nível ${proximoNivel}`, canvas.width / 2, canvas.height / 2 + 30);
+        ctx.fillText(`Clique ou Pressione Enter para o Nível ${proximoNivel}`, canvas.width / 2, canvas.height / 2 + 30);
     }
     else if (estadoDoJogo === 'pausado') {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -441,25 +514,32 @@ function gameLoop() {
         ctx.fillText('PAUSADO', canvas.width / 2, canvas.height / 2);
     }
     else if (estadoDoJogo === 'jogando') {
-        alvo.y += alvo.velocidadeY;
-        if (alvo.y > canvas.height) {
-            if (alvo.texto !== ITEM_PERIGO) {
-                tempoRestante -= 2;
+        // Itera sobre todos os alvos para movê-los e desenhá-los
+        for (let i = alvos.length - 1; i >= 0; i--) {
+            const alvo = alvos[i];
+            alvo.y += alvo.velocidadeY;
+
+            // Se o alvo saiu da tela
+            if (alvo.y > canvas.height) {
+                if (alvo.texto !== ITEM_PERIGO) {
+                    tempoRestante -= 2;
+                }
+                alvos.splice(i, 1); // Remove o alvo
+                continue; // Pula para a próxima iteração
             }
-            resetarPosicaoAlvo();
+            
+            let tamanhoFonte;
+            if (alvo.texto === ITEM_PERIGO) {
+                tamanhoFonte = 32;
+            } else {
+                tamanhoFonte = 22;
+            }
+            ctx.font = `bold ${tamanhoFonte}px Gotham, Poppins, sans-serif`;
+            ctx.fillStyle = alvo.texto === ITEM_PERIGO ? '#FF5733' : alvo.cor;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(alvo.texto, alvo.x + alvo.largura / 2, alvo.y + alvo.altura / 2);
         }
-        
-        let tamanhoFonte;
-        if (alvo.texto === ITEM_PERIGO) {
-            tamanhoFonte = 32;
-        } else {
-            tamanhoFonte = 22;
-        }
-        ctx.font = `bold ${tamanhoFonte}px Gotham, Poppins, sans-serif`;
-        ctx.fillStyle = alvo.texto === ITEM_PERIGO ? '#FF5733' : alvo.cor;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(alvo.texto, alvo.x + alvo.largura / 2, alvo.y + alvo.altura / 2);
 
         // Barra de informações superior
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -491,5 +571,6 @@ function gameLoop() {
             fimDeJogoMensagem.textContent = `O tempo acabou! Sua pontuação foi ${pontuacao}. Tente novamente!`;
         }
         clearInterval(cronometro);
+        clearInterval(geradorDeAlvosInterval);
     }
 }
