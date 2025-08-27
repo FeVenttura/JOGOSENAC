@@ -1,7 +1,3 @@
-// ===============================================
-// PASSO 1: CONFIGURAÇÃO INICIAL E ELEMENTOS DO HTML
-// ===============================================
-
 // Elementos da Interface
 const telaLogin = document.getElementById('telaLogin');
 const formLogin = document.getElementById('formLogin');
@@ -42,7 +38,7 @@ let nivelAtual = 0;
 let jogadorAtual = null; 
 let cronometro; 
 let tempoRestante; 
-let geradorDeAlvosInterval; // NOVO: Controlador do intervalo de geração de alvos
+let geradorDeAlvosInterval; 
 
 const VELOCIDADE_MAXIMA = 18;
 
@@ -113,10 +109,10 @@ function atualizarPontuacaoJogador() {
 // PASSO 4: OBJETO DE JOGO E FUNÇÕES DO JOGO
 // ===============================================
 
-// REFEITO: Agora temos um array de alvos
+// Array de alvos
 let alvos = [];
 
-// REFEITO: Esta função agora CRIA um novo alvo e o adiciona ao array
+// Esta função agora CRIA um novo alvo e o adiciona ao array
 function criarNovoAlvo() {
     if (estadoDoJogo !== 'jogando') return;
 
@@ -151,7 +147,7 @@ function criarNovoAlvo() {
     });
 }
 
-// NOVO: Função para controlar o intervalo de geração de alvos
+// Função para controlar o intervalo de geração de alvos
 function iniciarGeradorDeAlvos() {
     clearInterval(geradorDeAlvosInterval);
     const intervalo = niveis[nivelAtual].intervaloGeracao;
@@ -178,7 +174,7 @@ function iniciarNivel(indiceNivel) {
     // Limpa os alvos da tela anterior
     alvos = []; 
     
-    // ALTERADO: O tempo agora REINICIA a cada nível
+    // O tempo REINICIA a cada nível
     tempoRestante = configNivel.tempo;
     
     iniciarCronometro();
@@ -414,7 +410,7 @@ window.addEventListener('keydown', (evento) => {
     }
 });
 
-// REFEITO: Agora itera sobre múltiplos alvos
+// Itera sobre múltiplos alvos
 function tratarCliqueOuToque(evento) {
     evento.preventDefault(); 
     
